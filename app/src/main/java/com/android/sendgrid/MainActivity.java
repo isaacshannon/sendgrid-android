@@ -19,6 +19,7 @@ import android.widget.Toast;
 import com.sendgrid.SendGrid;
 import com.sendgrid.SendGridException;
 
+import org.apache.commons.io.FilenameUtils;
 import org.json.JSONException;
 
 import java.io.IOException;
@@ -27,6 +28,7 @@ public class MainActivity extends Activity {
 
   private static final String SENDGRID_USERNAME = "";
   private static final String SENDGRID_PASSWORD = "";
+  private static final String SENDGRID_APIKEY = "";
   private static final int ADD_ATTACHMENT = 1;
 
   // Views
@@ -39,7 +41,7 @@ public class MainActivity extends Activity {
   private Button sendButton;
 
   // Attachment fields
-  private Uri selectedImageURI;
+  private Uri selectedAudioURI;
   private String attachmentName;
 
   @Override
@@ -61,17 +63,18 @@ public class MainActivity extends Activity {
       @Override
       public void onClick(View view) {
 
-        if (selectedImageURI == null) {
-          // Start get image intent if no image to attach to email
+        if (selectedAudioURI == null) {
+          // Start get audio intent if no image to attach to email
           Intent intent = new Intent();
-          intent.setType("image/*");
+          //The Audio is saved as .mp4, can be found under the video intent
+          intent.setType("video/*");
           intent.setAction(Intent.ACTION_GET_CONTENT);
           startActivityForResult(intent, ADD_ATTACHMENT);
         } else {
-          // Remove image attachment
+          // Remove audio attachment
           attachmentButton.setText("Add Attachment");
           attachmentText.setVisibility(View.GONE);
-          selectedImageURI = null;
+          selectedAudioURI = null;
         }
       }
     });
@@ -92,16 +95,15 @@ public class MainActivity extends Activity {
     if (requestCode == ADD_ATTACHMENT) {
       if(resultCode==RESULT_OK){
         // Get image from result intent
-        selectedImageURI = data.getData();
+        selectedAudioURI = data.getData();
         ContentResolver contentResolver = getContentResolver();
-        Log.d("SendAppExample", "Image Uri: " + selectedImageURI);
+        Log.d("SendAppExample", "Image Uri: " + selectedAudioURI);
 
         // Get image attachment filename
         attachmentName = "";
-        Cursor c = contentResolver.query(selectedImageURI, null, null, null, null);
-        if (c != null && c.moveToFirst()) {
-          attachmentName = c.getString(c.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME));
-        }
+        String baseName = FilenameUtils.getBaseName(selectedAudioURI.toString());
+        String extension = FilenameUtils.getExtension(selectedAudioURI.toString());
+        attachmentName = baseName+"."+extension;
 
         // Update views to show attachment
         attachmentText.setVisibility(View.VISIBLE);
@@ -127,7 +129,8 @@ public class MainActivity extends Activity {
     protected Void doInBackground(Void... params) {
 
       try {
-        SendGrid sendgrid = new SendGrid(SENDGRID_USERNAME, SENDGRID_PASSWORD);
+        //SendGrid sendgrid = new SendGrid(SENDGRID_USERNAME, SENDGRID_PASSWORD);
+        SendGrid sendgrid = new SendGrid(SENDGRID_APIKEY);
 
         SendGrid.Email email = new SendGrid.Email();
 
@@ -139,8 +142,8 @@ public class MainActivity extends Activity {
         email.setText(msgEditText.getText().toString());
 
         // Attach image
-        if (selectedImageURI != null) {
-          email.addAttachment(attachmentName, getContentResolver().openInputStream(selectedImageURI));
+        if (selectedAudioURI != null) {
+          email.addAttachment(attachmentName, getContentResolver().openInputStream(selectedAudioURI));
         }
 
         // Send email, execute http request
@@ -163,8 +166,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onPostExecute(Void aVoid) {
       super.onPostExecute(aVoid);
-
-      Toast.makeText(context, msgResponse, Toast.LENGTH_SHORT).show();
+      Log.i("SendAppExample", msgResponse);
+      Toast.makeText(context, msgResponse, Toast.LENGTH_LONG).show();
     }
   }
 }
